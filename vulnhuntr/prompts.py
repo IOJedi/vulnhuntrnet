@@ -1,86 +1,88 @@
-LFI_TEMPLATE = """
+string LFI_TEMPLATE = @"
 Combine the code in <file_code> and <context_code> then analyze the code for remotely-exploitable Local File Inclusion (LFI) vulnerabilities by following the remote user-input call chain of code.
 
-LFI-Specific Focus Areas:
+LFI-Specific Focus Areas (.NET):
 1. High-Risk Functions and Methods:
-   - open(), file(), io.open()
-   - os.path.join() for file paths
+   - System.IO.File.ReadAllText(), System.IO.File.ReadAllBytes(), System.IO.File.ReadAllLines()
+   - System.IO.File.Open()
+   - System.IO.Path.Combine() for file paths
    - Custom file reading functions
 
 2. Path Traversal Opportunities:
-   - User-controlled file paths or names
-   - Dynamic inclusion of files or modules
+   - User-controlled file paths or names (e.g., Request.QueryString, Request.Form)
+   - Dynamic inclusion of server-side files or resources
 
 3. File Operation Wrappers:
-   - Template engines with file inclusion features
-   - Custom file management classes
+   - Templating engines or Razor views that load files based on user input
+   - Custom classes that wrap file operations
 
 4. Indirect File Inclusion:
-   - Configuration file parsing
-   - Plugin or extension loading systems
-   - Log file viewers
+   - Configuration file loading from paths influenced by user input
+   - Plugin or module loading from disk based on user-provided data
+   - Log viewers or file-based resource fetchers reading arbitrary paths
 
 5. Example LFI-Specific Bypass Techniques are provided in <example_bypasses></example_bypasses> tags
 
 When analyzing, consider:
 - How user input influences file paths or names
-- Effectiveness of path sanitization and validation
-- Potential for null byte injection or encoding tricks
-- Interaction with file system access controls
-"""
+- Effectiveness of path sanitization and validation (e.g., Path.GetFullPath(), checking for restricted directories)
+- Potential for traversal sequences like ../ or ..\\ to access unintended files
+- Interaction with file system permissions
+";
 
-RCE_TEMPLATE = """
+string RCE_TEMPLATE = @"
 Combine the code in <file_code> and <context_code> tags then analyze for remotely-exploitable Remote Code Execution (RCE) vulnerabilities by following the remote user-input call chain of code.
 
-RCE-Specific Focus Areas:
+RCE-Specific Focus Areas (.NET):
 1. High-Risk Functions and Methods:
-   - eval(), exec(), subprocess modules
-   - os.system(), os.popen()
-   - pickle.loads(), yaml.load(), json.loads() with custom decoders
+   - System.Diagnostics.Process.Start(), System.Diagnostics.Process.BeginOutputReadLine()
+   - System.CodeDom.Compiler or Roslyn-based dynamic code compilation
+   - Reflection-based code loading or invocation (e.g., Assembly.LoadFrom(), Type.InvokeMember())
+   - Deserialization of remote input (e.g., BinaryFormatter.Deserialize() without proper validation)
 
 2. Indirect Code Execution:
-   - Dynamic imports (e.g., __import__())
-   - Reflection/introspection misuse
-   - Server-side template injection
+   - Dynamic assembly loading from user-influenced paths
+   - Server-side template injection in Razor views or similar engines
+   - Reflection/introspection on user-supplied class names or method names
 
 3. Command Injection Vectors:
-   - Shell command composition
-   - Unsanitized use of user input in system calls
+   - Concatenation of user input into strings passed to Process.Start()
+   - Execution of shell commands through cmd.exe or powershell.exe
 
 4. Deserialization Vulnerabilities:
-   - Unsafe deserialization of user-controlled data
+   - Unsafe deserialization (BinaryFormatter, DataContractSerializer) of user-controlled data without validation
 
 5. Example RCE-Specific Bypass Techniques are provided in <example_bypasses></example_bypasses> tags.
 
 When analyzing, consider:
 - How user input flows into these high-risk areas
 - Potential for filter evasion or sanitization bypasses
-- Environment-specific factors (e.g., Python version, OS) affecting exploitability
-"""
+- Environment-specific factors (e.g., .NET Framework version, OS) affecting exploitability
+";
 
-XSS_TEMPLATE = """
+string XSS_TEMPLATE = @"
 Combine the code in <file_code> and <context_code> tags then analyze for remotely-exploitable Cross-Site Scripting (XSS) vulnerabilities by following the remote user-input call chain of code.
 
-XSS-Specific Focus Areas:
+XSS-Specific Focus Areas (.NET):
 1. High-Risk Functions and Methods:
-   - HTML rendering functions
-   - JavaScript generation or manipulation
-   - DOM manipulation methods
+   - HTML rendering methods (e.g., returning user input directly in Razor views or MVC Views)
+   - Using user input in System.Web.UI controls without proper encoding
+   - Generating JavaScript on server side that includes unvalidated user input
 
 2. Output Contexts:
-   - Unescaped output in HTML content
-   - Attribute value insertion
-   - JavaScript code or JSON data embedding
+   - Unescaped output in MVC/Razor views
+   - Data bound to ASP.NET WebForms controls without HtmlEncode
+   - JSON responses that incorporate raw user input
 
 3. Input Handling:
-   - User input reflection in responses
-   - Sanitization and encoding functions
+   - Reflection of query string or form values directly into the response
+   - Sanitization methods (System.Web.HttpUtility.HtmlEncode) and their usage
    - Custom input filters or cleaners
 
 4. Indirect XSS Vectors:
-   - Stored user input (e.g., in databases, files)
-   - URL parameter reflection
-   - HTTP header injection points
+   - Stored user input in databases, files, or cache that gets rendered without encoding
+   - URL parameter reflection in server responses
+   - HTTP header injection through user input
 
 5. Example XSS-Specific Bypass Techniques are provided in <example_bypasses></example_bypasses> tags.
 
@@ -88,30 +90,32 @@ When analyzing, consider:
 - How user input flows into HTML, JavaScript, or JSON contexts
 - Effectiveness of input validation, sanitization, and output encoding
 - Potential for filter evasion using encoding or obfuscation
-- Impact of Content Security Policy (CSP) if implemented
-"""
+- Impact of Content Security Policy (CSP) or AntiXss libraries if implemented
+";
 
-AFO_TEMPLATE = """
+string AFO_TEMPLATE = @"
 Combine the code in <file_code> and <context_code> tags then analyze for remotely-exploitable Arbitrary File Overwrite (AFO) vulnerabilities by following the remote user-input call chain of code.
 
-AFO-Specific Focus Areas:
+AFO-Specific Focus Areas (.NET):
 1. High-Risk Functions and Methods:
-   - open() with write modes
-   - os.rename(), shutil.move()
+   - System.IO.File.WriteAllText(), System.IO.File.WriteAllBytes()
+   - System.IO.File.Create(), System.IO.File.Move(), System.IO.File.Copy()
+   - System.IO.FileStream in write mode
    - Custom file writing functions
 
 2. Path Traversal Opportunities:
    - User-controlled file paths
-   - Directory creation or manipulation
+   - Directory creation or manipulation (System.IO.Directory.CreateDirectory())
+   - Attempted sanitization using Path methods but insufficient checks
 
 3. File Operation Wrappers:
-   - Custom file management classes
-   - Frameworks' file handling methods
+   - Custom file management classes that write files based on user input
+   - Framework methods that accept file paths from requests
 
 4. Indirect File Writes:
-   - Log file manipulation
-   - Configuration file updates
-   - Cache file creation
+   - Log file manipulation based on user input
+   - Configuration file or XML file overwriting
+   - Cached file creation triggered by user parameters
 
 5. Example AFO-Specific Bypass Techniques are provided in <example_bypasses></example_bypasses> tags.
 
@@ -119,42 +123,43 @@ When analyzing, consider:
 - How user input influences file paths or names
 - Effectiveness of path sanitization and validation
 - Potential for race conditions in file operations
-"""
+";
 
-SSRF_TEMPLATE = """
+string SSRF_TEMPLATE = @"
 Combine the code in <file_code> and <context_code> tags then analyze for remotely-exploitable Server-Side Request Forgery (SSRF) vulnerabilities by following the remote user-input call chain of code.
 
-SSRF-Specific Focus Areas:
+SSRF-Specific Focus Areas (.NET):
 1. High-Risk Functions and Methods:
-   - requests.get(), urllib.request.urlopen()
-   - Custom HTTP clients
-   - API calls to external services
+   - System.Net.Http.HttpClient.GetAsync(), WebRequest.Create()
+   - System.Net.WebClient.DownloadString()
+   - Custom HTTP clients or wrappers that accept user-influenced URLs
 
 2. URL Parsing and Validation:
-   - URL parsing libraries usage
+   - Uri constructors or UriBuilder usage with user input
    - Custom URL validation routines
+   - Checks for internal IP ranges or localhost being insufficient or absent
 
 3. Indirect SSRF Vectors:
-   - File inclusion functions (e.g., reading from URLs)
-   - XML parsers with external entity processing
-   - PDF generators, image processors using remote resources
+   - Functions or classes that read external resources (XML, JSON, images) based on user input
+   - PDF generators, image processors that fetch remote resources supplied by user
+   - RSS feed readers, social media integrations, or webhooks
 
 4. Cloud Metadata Access:
-   - Requests to cloud provider metadata URLs
+   - Requests to cloud provider metadata endpoints (e.g., AWS, Azure) via user input
 
 5. Example SSRF-Specific Bypass Techniques are provided in <example_bypasses></example_bypasses> tags.
 
 When analyzing, consider:
 - How user input influences outgoing network requests
 - Effectiveness of URL validation and whitelisting approaches
-- Potential for DNS rebinding or time-of-check to time-of-use attacks
-"""
+- Potential for DNS rebinding, IPv6 literal addresses, or other tricky SSRF techniques
+";
 
-SQLI_TEMPLATE = """
+string SQLI_TEMPLATE = @"
 Combine the code in <file_code> and <context_code> tags then analyze for remotely-exploitable SQL Injection (SQLI) vulnerabilities by following these steps:
 
 1. Identify Entry Points:
-   - Locate all points where remote user input is received (e.g., API parameters, form submissions).
+   - Locate all points where remote user input is received (e.g., MVC Action parameters, Web API parameters, query strings, form fields).
 
 2. Trace Input Flow:
    - Follow the user input as it flows through the application.
@@ -163,20 +168,21 @@ Combine the code in <file_code> and <context_code> tags then analyze for remotel
 3. Locate SQL Operations:
    - Find all locations where SQL queries are constructed or executed.
    - Pay special attention to:
-     - Direct SQL query construction (e.g., cursor.execute())
-     - ORM methods that accept raw SQL (e.g., Model.objects.raw())
-     - Custom query builders
+     - ADO.NET commands (System.Data.SqlClient.SqlCommand.CommandText)
+     - Entity Framework raw SQL queries (context.Database.SqlQuery())
+     - Dapper or other ORM raw SQL execution
+     - String concatenation in query strings
 
 4. Analyze Input Handling:
    - Examine how user input is incorporated into SQL queries.
    - Look for:
-     - String concatenation or formatting in SQL queries
-     - Parameterized queries implementation
-     - Dynamic table or column name usage
+     - String concatenation or interpolation into SQL
+     - Parameterized queries usage (SqlParameter objects)
+     - Dynamic table or column name usage from user input
 
 5. Evaluate Security Controls:
-   - Identify any input validation, sanitization, or escaping mechanisms.
-   - Assess the effectiveness of these controls against SQLI attacks.
+   - Identify any input validation, sanitization, or parameterization.
+   - Assess their effectiveness against SQLI attacks.
 
 6. Consider Bypass Techniques:
    - Analyze potential ways to bypass identified security controls.
@@ -184,56 +190,56 @@ Combine the code in <file_code> and <context_code> tags then analyze for remotel
 
 7. Assess Impact:
    - Evaluate the potential impact if the vulnerability is exploited.
-   - Consider the sensitivity of the data accessible through the vulnerable query.
+   - Consider the sensitivity of the accessed data.
 
 When analyzing, consider:
 - The complete path from user input to SQL execution
 - Any gaps in the analysis where more context is needed
 - The effectiveness of any security measures in place
 - Potential for filter evasion in different database contexts
-"""
+";
 
-IDOR_TEMPLATE = """
+string IDOR_TEMPLATE = @"
 Combine the code in <file_code> and <context_code> tags then analyze for remotely-exploitable Insecure Direct Object Reference (IDOR) vulnerabilities.
 
-IDOR-Specific Focus Areas:
-1. Look for code segments involving IDs, keys, filenames, session tokens, or any other unique identifiers that might be used to access resources (e.g., user_id, file_id, order_id).
+IDOR-Specific Focus Areas (.NET):
+1. Look for code segments involving IDs, keys, GUIDs, or unique identifiers from user input used to access resources (e.g., ?userId=, ?fileId=).
 
 2. Common Locations:
-   - URLs/Routes: Check if IDs are passed directly in the URL parameters (e.g., /user/{user_id}/profile).
-   - Form Parameters: Look for IDs submitted through forms.
-   - API Endpoints: Examine API requests where IDs are sent in request bodies or headers.
+   - Controller actions with route parameters (e.g., /api/users/{id})
+   - Query string parameters (Request.QueryString)
+   - Model binding parameters from forms or JSON requests
 
 3. Ensure Authorization is Enforced:
-   - Verify that the code checks the user's authorization before allowing access to the resource identified by the ID.
-   - Look for authorization checks immediately after the object reference is received.
+   - Verify that the code checks the user's authorization (e.g., [Authorize] attributes, role checks, permission checks) before allowing access to the resource.
+   - Look for explicit or implicit authorization checks after the object reference is received.
 
 4. Common Functions:
-   - Functions like `has_permission()`, `is_authorized()`, or similar should be present near the object access code.
-   - Absence of such checks could indicate a potential IDOR vulnerability.
+   - Functions that directly return objects by ID without verifying the current user's permissions.
+   - Repository methods that accept an ID from user input and return sensitive data.
 
 5. Example IDOR-Specific Bypass Techniques are provided in <example_bypasses></example_bypasses> tags.
 
 When analyzing, consider:
-- How user input is used when processing a request.
-- Presence of any logic responsible for determining the authentication/authorization of a user.
-"""
+- How user input is used to retrieve resources by ID
+- Presence and correctness of authorization logic
+";
 
-VULN_SPECIFIC_BYPASSES_AND_PROMPTS = {
-    "LFI": {
-        "prompt": LFI_TEMPLATE,
-        "bypasses" : [
+var VULN_SPECIFIC_BYPASSES_AND_PROMPTS = new {
+    LFI = new {
+        prompt = LFI_TEMPLATE,
+        bypasses = new [] {
             "../../../../etc/passwd",
             "/proc/self/environ",
             "data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=",
             "file:///etc/passwd",
-            "C:\\win.ini"
+            "C:\\win.ini",
             "/?../../../../../../../etc/passwd"
-        ]
+        }
     },
-    "RCE": {
-        "prompt": RCE_TEMPLATE,
-        "bypasses" : [
+    RCE = new {
+        prompt = RCE_TEMPLATE,
+        bypasses = new [] {
             "__import__('os').system('id')",
             "eval('__import__(\\'os\\').popen(\\'id\\').read()')",
             "exec('import subprocess;print(subprocess.check_output([\\'id\\']))')",
@@ -241,57 +247,57 @@ VULN_SPECIFIC_BYPASSES_AND_PROMPTS = {
             "getattr(__import__('os'), 'system')('id')",
             "$(touch${IFS}/tmp/mcinerney)",
             "import pickle; pickle.loads(b'cos\\nsystem\\n(S\"id\"\\ntR.')"
-        ]
+        }
     },
-    "SSRF": {
-        "prompt": SSRF_TEMPLATE,
-        "bypasses": [
+    SSRF = new {
+        prompt = SSRF_TEMPLATE,
+        bypasses = new [] {
             "http://0.0.0.0:22",
             "file:///etc/passwd",
             "dict://127.0.0.1:11211/",
             "ftp://anonymous:anonymous@127.0.0.1:21",
             "gopher://127.0.0.1:9000/_GET /"
-        ]
+        }
     },
-    "AFO": {
-        "prompt": AFO_TEMPLATE,
-        "bypasses": [
+    AFO = new {
+        prompt = AFO_TEMPLATE,
+        bypasses = new [] {
             "../../../etc/passwd%00.jpg",
             "shell.py;.jpg",
             ".htaccess",
             "/proc/self/cmdline",
             "../../config.py/."
-        ]
+        }
     },
-    "SQLI": {
-        "prompt": SQLI_TEMPLATE,
-        "bypasses": [
+    SQLI = new {
+        prompt = SQLI_TEMPLATE,
+        bypasses = new [] {
             "' UNION SELECT username, password FROM users--",
             "1 OR 1=1--",
             "admin'--",
             "1; DROP TABLE users--",
             "' OR '1'='1"
-        ]
+        }
     },
-    "XSS": {
-        "prompt": XSS_TEMPLATE,
-        "bypasses": [
+    XSS = new {
+        prompt = XSS_TEMPLATE,
+        bypasses = new [] {
             "{{request.application.__globals__.__builtins__.__import__('os').popen('id').read()}}",
             "${7*7}",
             "{% for x in ().__class__.__base__.__subclasses__() %}{% if \"warning\" in x.__name__ %}{{x()._module.__builtins__['__import__']('os').popen(\"id\").read()}}{%endif%}{% endfor %}",
             "<script>alert(document.domain)</script>",
             "javascript:alert(1)"
-        ]
+        }
     },
-    "IDOR": {
-        "prompt": IDOR_TEMPLATE,
-        "bypasses": []
+    IDOR = new {
+        prompt = IDOR_TEMPLATE,
+        bypasses = new string[] {}
     }
-}
+};
 
-INITIAL_ANALYSIS_PROMPT_TEMPLATE = """
+string INITIAL_ANALYSIS_PROMPT_TEMPLATE = @"
 Analyze the code in <file_code> tags for potential remotely exploitable vulnerabilities:
-1. Identify all remote user input entry points (e.g., API endpoints, form submissions) and if you can't find that, request the necessary classes or functions in the <context_code> tags.
+1. Identify all remote user input entry points (e.g., ASP.NET MVC Controllers, Web API actions, WebForms event handlers) and if you can't find that, request the necessary classes or functions in the <context_code> tags.
 2. Locate potential vulnerability sinks for:
    - Local File Inclusion (LFI)
    - Arbitrary File Overwrite (AFO)
@@ -304,9 +310,9 @@ Analyze the code in <file_code> tags for potential remotely exploitable vulnerab
 4. Highlight areas where more context is needed to complete the analysis.
 
 Be generous and thorough in identifying potential vulnerabilities as you'll analyze more code in subsequent steps so if there's just a possibility of a vulnerability, include it the <vulnerability_types> tags.
-"""
+";
 
-README_SUMMARY_PROMPT_TEMPLATE = """
+string README_SUMMARY_PROMPT_TEMPLATE = @"
 Provide a very concise summary of the README.md content in <readme_content></readme_content> tags from a security researcher's perspective, focusing specifically on:
 1. The project's main purpose
 2. Any networking capabilities, such as web interfaces or remote API calls that constitute remote attack surfaces
@@ -315,9 +321,10 @@ Provide a very concise summary of the README.md content in <readme_content></rea
 Please keep the summary brief and to the point, highlighting only the most relevant networking-related functionality as it relates to attack surface.
 
 Output in <summary></summary> XML tags.
-"""
+";
 
-GUIDELINES_TEMPLATE = """Reporting Guidelines:
+string GUIDELINES_TEMPLATE = @"
+Reporting Guidelines:
 1. JSON Format:
    - Provide a single, well-formed JSON report combining all findings.
    - Use 'None' for any aspect of the report that you lack the necessary information for.
@@ -338,10 +345,11 @@ GUIDELINES_TEMPLATE = """Reporting Guidelines:
 4. Proof of Concept:
    - Include a PoC exploit or detailed exploitation steps for each vulnerability.
    - Ensure PoCs are specific to the analyzed code, not generic examples.
-   - Review the code path ofthe potential vulnerability and be sure that the PoC bypasses any security controls in the code path.
-"""
+   - Review the code path of the potential vulnerability and be sure that the PoC bypasses any security controls in the code path.
+";
 
-ANALYSIS_APPROACH_TEMPLATE = """Analysis Instructions:
+string ANALYSIS_APPROACH_TEMPLATE = @"
+Analysis Instructions:
 1. Comprehensive Review:
    - Thoroughly examine the content in <file_code>, <context_code> tags (if provided) with a focus on remotely exploitable vulnerabilities.
 
@@ -366,10 +374,11 @@ ANALYSIS_APPROACH_TEMPLATE = """Analysis Instructions:
 
 7. Final Review:
    - Confirm your proof of concept (PoC) exploits bypass any security controls.
-   - Double-check that your JSON response is well-formed and complete."""
+   - Double-check that your JSON response is well-formed and complete.
+";
 
-SYS_PROMPT_TEMPLATE = """
-You are the world's foremost expert in Python security analysis, renowned for uncovering novel and complex vulnerabilities in web applications. Your task is to perform an exhaustive static code analysis, focusing on remotely exploitable vulnerabilities including but not limited to:
+string SYS_PROMPT_TEMPLATE = @"
+You are the world's foremost expert in .NET security analysis, renowned for uncovering novel and complex vulnerabilities in web applications. Your task is to perform an exhaustive static code analysis, focusing on remotely exploitable vulnerabilities including but not limited to:
 
 1. Local File Inclusion (LFI)
 2. Remote Code Execution (RCE)
