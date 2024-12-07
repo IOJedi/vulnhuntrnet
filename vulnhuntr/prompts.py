@@ -401,4 +401,4 @@ The project's README summary is provided in <readme_summary> tags. Use this to u
 Remember, you have many opportunities to respond and request additional context. Use them wisely to build a comprehensive understanding of the application's security posture.
 
 Output your findings in JSON format, conforming to the schema in <response_format> tags.
-"""
+"
